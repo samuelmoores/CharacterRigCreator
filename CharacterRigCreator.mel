@@ -1,5 +1,11 @@
+string $allJoints[] = `ls -type "joint"`;
+for ($joint in $allJoints) {
+    string $newName = substitute("mixamorig:", $joint, "");
+    rename $joint $newName;
+}
+
 //~~~~~~~~~~~~~~~~~~~~~Hips~~~~~~~~~~~~~~~~~~~~~~~~~
-circle -c 0 0 0 -nr 0 1 0 -sw 360 -r 1 -d 3 -ut 0 -tol 0.01 -s 8 -ch 1; objectMoveCommand;
+CreateNURBSCircle;
 matchTransform nurbsCircle1 Hips;
 scale -r 24 24 24 ;
 rename "nurbsCircle1" "hips_ctrl";
@@ -9,6 +15,30 @@ select -r hips_ctrl ;
 select -add Hips ;
 doCreateParentConstraintArgList 1 { "1","0","0","0","0","0","0","0","1","","1" };
 parentConstraint -mo -weight 1;
+
+//spine
+CreateNURBSCircle;
+matchTransform nurbsCircle1 Head;
+scale -r 14 14 14;
+rename "nurbsCircle1" "head_ctrl";
+FreezeTransformations;
+
+select -r head_ctrl ;
+select -tgl Head ;
+doCreateOrientConstraintArgList 1 { "1","0","0","0","0","0","0","1","","1" };
+orientConstraint -mo -weight 1;
+
+//head
+CreateNURBSCircle;
+matchTransform nurbsCircle1 Spine1;
+scale -r 18 18 18;
+rename "nurbsCircle1" "spine_ctrl";
+FreezeTransformations;
+
+select -r spine_ctrl ;
+select -tgl Spine1 ;
+doCreateOrientConstraintArgList 1 { "1","0","0","0","0","0","0","1","","1" };
+orientConstraint -mo -weight 1;
 
 //~~~~~~~~~~~~~~~~~~~~~Left Leg~~~~~~~~~~~~~~~~~~~~~~~~~
 select -r LeftUpLeg ;
@@ -27,9 +57,9 @@ ikHandle -sol ikSCsolver -s 0;
 rename "ikHandle1" "ikHandle_toe_l";
 
 CreateNURBSCircle;
-move -r 17 0 0 ;
-setAttr "nurbsCircle1.scaleZ" 20;
-setAttr "nurbsCircle1.scaleX" 10;
+matchTransform nurbsCircle1 LeftToeBase;
+scale -r 7 0 20 ;
+rotate -r 90 0 0;
 rename "nurbsCircle1" "foot_l_ctrl";
 FreezeTransformations;
 
@@ -53,40 +83,40 @@ poleVectorConstraint -weight 1;
 //~~~~~~~~~~~~~~~~~~~~~Foot Attributes~~~~~~~~~~~~~~~~~~~~~~~~~
 select -cl  ;
 doGroup 0 1 1;
-rename "null1" "toe_grp";
-parent toe_grp foot_l_ctrl;
-parent ikHandle_leg_l toe_grp;
+rename "null1" "toe_l_grp";
+parent toe_l_grp foot_l_ctrl;
+parent ikHandle_leg_l toe_l_grp;
 float $jointPos[] = `xform -q -ws -t "LeftToe_End"`;
-xform -ws -piv $jointPos[0] $jointPos[1] $jointPos[2] "toe_grp";
+xform -ws -piv $jointPos[0] $jointPos[1] $jointPos[2] "toe_l_grp";
 
 select -cl  ;
 doGroup 0 1 1;
-rename "null1" "foot_grp";
-parent foot_grp toe_grp;
-parent ikHandle_leg_l foot_grp;
+rename "null1" "foot_l_grp";
+parent foot_l_grp toe_l_grp;
+parent ikHandle_leg_l foot_l_grp;
 float $jointPos[] = `xform -q -ws -t "LeftToeBase"`;
-xform -ws -piv $jointPos[0] $jointPos[1] $jointPos[2] "foot_grp";
+xform -ws -piv $jointPos[0] $jointPos[1] $jointPos[2] "foot_l_grp";
 
 select -cl  ;
 doGroup 0 1 1;
-rename "null1" "heel_grp";
-parent heel_grp foot_l_ctrl;
-parent ikHandle_toe_l heel_grp;
-parent ikHandle_foot_l heel_grp;
+rename "null1" "heel_l_grp";
+parent heel_l_grp foot_l_ctrl;
+parent ikHandle_toe_l heel_l_grp;
+parent ikHandle_foot_l heel_l_grp;
 float $jointPos[] = `xform -q -ws -t "LeftFoot"`;
-xform -ws -piv $jointPos[0] $jointPos[1] $jointPos[2] "heel_grp";
+xform -ws -piv $jointPos[0] $jointPos[1] $jointPos[2] "heel_l_grp";
 
 addAttr -ln "Foot"  -at double  -min 0 -dv 0 |foot_l_ctrl;
 setAttr -e-keyable true |foot_l_ctrl.Foot;
-connectAttr -f foot_l_ctrl.Foot foot_grp.rotateX;
+connectAttr -f foot_l_ctrl.Foot foot_l_grp.rotateX;
 
 addAttr -ln "Toe"  -at double  -min 0 -dv 0 |foot_l_ctrl;
 setAttr -e-keyable true |foot_l_ctrl.Toe;
-connectAttr -f foot_l_ctrl.Toe toe_grp.rotateX;
+connectAttr -f foot_l_ctrl.Toe toe_l_grp.rotateX;
 
 addAttr -ln "Heel"  -at double -dv 0 |foot_l_ctrl;
 setAttr -e-keyable true |foot_l_ctrl.Heel;
-connectAttr -f foot_l_ctrl.Heel heel_grp.rotateX;
+connectAttr -f foot_l_ctrl.Heel heel_l_grp.rotateX;
 
 //~~~~~~~~~~~~~~~~~~~~~Hand~~~~~~~~~~~~~~~~~~~~~~~~~
 select -r LeftArm ;
@@ -158,12 +188,33 @@ connectAttr -f hand_l_ctrl.ThumbTwist  LeftHandThumb1.rotateY;
 connectAttr -f LeftHandThumb1.rotateY LeftHandThumb2.rotateY;
 connectAttr -f LeftHandThumb2.rotateY LeftHandThumb3.rotateY;
 
+addAttr -ln "ThumbEndCurl"  -at double   -dv 0 |hand_l_ctrl;
+setAttr -e-keyable true |hand_l_ctrl.ThumbEndCurl;
+
+connectAttr -f hand_l_ctrl.ThumbEndCurl  LeftHandThumb3.rotateZ;
+
+//clavicle
+CreateNURBSCircle;
+matchTransform nurbsCircle1 LeftShoulder;
+scale -r 5 5 5 ;
+move -r 10 10 0 ;
+rename "nurbsCircle1" "clavicle_l_ctrl";
+FreezeTransformations;
+parent clavicle_l_ctrl hips_ctrl;
+
+//constraint
+select -r clavicle_l_ctrl ;
+select -tgl LeftShoulder ;
+doCreateOrientConstraintArgList 1 { "1","0","0","0","0","0","0","1","","1" };
+orientConstraint -mo -weight 1;
+
+
 
 //~~~~~~~~~~~~~~~~~~~~~Right Leg~~~~~~~~~~~~~~~~~~~~~~~~~
 select -r RightUpLeg ;
 select -add RightFoot ;
 ikHandle -s sticky;
-rename "ikHandle1" "ikHandle_leg_r";
+rename "ikHandle1" "ikHandle_reg_r";
 
 select -r RightFoot ;
 select -add RightToeBase ;
@@ -171,143 +222,170 @@ ikHandle -sol ikSCsolver -s 0;
 rename "ikHandle1" "ikHandle_foot_r";
 
 select -r RightToeBase ;
-select -add LeftToe_End ;
+select -add RightToe_End ;
 ikHandle -sol ikSCsolver -s 0;
-rename "ikHandle1" "ikHandle_toe_l";
+rename "ikHandle1" "ikHandle_toe_r";
 
 CreateNURBSCircle;
-move -r 17 0 0 ;
-setAttr "nurbsCircle1.scaleZ" 20;
-setAttr "nurbsCircle1.scaleX" 10;
-rename "nurbsCircle1" "foot_l_ctrl";
+matchTransform nurbsCircle1 RightToeBase;
+scale -r 7 0 20 ;
+rotate -r 90 0 0;
+rename "nurbsCircle1" "foot_r_ctrl";
 FreezeTransformations;
 
-parent ikHandle_leg_l foot_l_ctrl ;
-parent ikHandle_foot_l foot_l_ctrl ;
-parent ikHandle_toe_l foot_l_ctrl ;
+parent ikHandle_reg_r foot_r_ctrl ;
+parent ikHandle_foot_r foot_r_ctrl ;
+parent ikHandle_toe_r foot_r_ctrl ;
 
 CreateNURBSCircle;
 setAttr "nurbsCircle1.scaleX" 5;
 setAttr "nurbsCircle1.scaleY" 5;
 setAttr "nurbsCircle1.scaleZ" 5;
-rename "nurbsCircle1" "knee_l_ctrl";
-matchTransform knee_l_ctrl LeftLeg;
+rename "nurbsCircle1" "knee_r_ctrl";
+matchTransform knee_r_ctrl RightLeg;
 move -r 0 0 25 ;
 FreezeTransformations;
 
-select -r knee_l_ctrl ;
-select -add ikHandle_leg_l ;
+select -r knee_r_ctrl ;
+select -add ikHandle_reg_r ;
 poleVectorConstraint -weight 1;
 
 //~~~~~~~~~~~~~~~~~~~~~Foot Attributes~~~~~~~~~~~~~~~~~~~~~~~~~
 select -cl  ;
 doGroup 0 1 1;
-rename "null1" "toe_grp";
-parent toe_grp foot_l_ctrl;
-parent ikHandle_leg_l toe_grp;
-float $jointPos[] = `xform -q -ws -t "LeftToe_End"`;
-xform -ws -piv $jointPos[0] $jointPos[1] $jointPos[2] "toe_grp";
+rename "null1" "toe_r_grp";
+parent toe_r_grp foot_r_ctrl;
+parent ikHandle_reg_r toe_r_grp;
+float $jointPos[] = `xform -q -ws -t "RightToe_End"`;
+xform -ws -piv $jointPos[0] $jointPos[1] $jointPos[2] "toe_r_grp";
 
 select -cl  ;
 doGroup 0 1 1;
-rename "null1" "foot_grp";
-parent foot_grp toe_grp;
-parent ikHandle_leg_l foot_grp;
-float $jointPos[] = `xform -q -ws -t "LeftToeBase"`;
-xform -ws -piv $jointPos[0] $jointPos[1] $jointPos[2] "foot_grp";
+rename "null1" "foot_r_grp";
+parent foot_r_grp toe_r_grp;
+parent ikHandle_reg_r foot_r_grp;
+float $jointPos[] = `xform -q -ws -t "RightToeBase"`;
+xform -ws -piv $jointPos[0] $jointPos[1] $jointPos[2] "foot_r_grp";
 
 select -cl  ;
 doGroup 0 1 1;
-rename "null1" "heel_grp";
-parent heel_grp foot_l_ctrl;
-parent ikHandle_toe_l heel_grp;
-parent ikHandle_foot_l heel_grp;
-float $jointPos[] = `xform -q -ws -t "LeftFoot"`;
-xform -ws -piv $jointPos[0] $jointPos[1] $jointPos[2] "heel_grp";
+rename "null1" "heel_r_grp";
+parent heel_r_grp foot_r_ctrl;
+parent ikHandle_toe_r heel_r_grp;
+parent ikHandle_foot_r heel_r_grp;
+float $jointPos[] = `xform -q -ws -t "RightFoot"`;
+xform -ws -piv $jointPos[0] $jointPos[1] $jointPos[2] "heel_r_grp";
 
-addAttr -ln "Foot"  -at double  -min 0 -dv 0 |foot_l_ctrl;
-setAttr -e-keyable true |foot_l_ctrl.Foot;
-connectAttr -f foot_l_ctrl.Foot foot_grp.rotateX;
+addAttr -ln "Foot"  -at double  -min 0 -dv 0 |foot_r_ctrl;
+setAttr -e-keyable true |foot_r_ctrl.Foot;
+connectAttr -f foot_r_ctrl.Foot foot_r_grp.rotateX;
 
-addAttr -ln "Toe"  -at double  -min 0 -dv 0 |foot_l_ctrl;
-setAttr -e-keyable true |foot_l_ctrl.Toe;
-connectAttr -f foot_l_ctrl.Toe toe_grp.rotateX;
+addAttr -ln "Toe"  -at double  -min 0 -dv 0 |foot_r_ctrl;
+setAttr -e-keyable true |foot_r_ctrl.Toe;
+connectAttr -f foot_r_ctrl.Toe toe_r_grp.rotateX;
 
-addAttr -ln "Heel"  -at double -dv 0 |foot_l_ctrl;
-setAttr -e-keyable true |foot_l_ctrl.Heel;
-connectAttr -f foot_l_ctrl.Heel heel_grp.rotateX;
+addAttr -ln "Heel"  -at double -dv 0 |foot_r_ctrl;
+setAttr -e-keyable true |foot_r_ctrl.Heel;
+connectAttr -f foot_r_ctrl.Heel heel_r_grp.rotateX;
 
 //~~~~~~~~~~~~~~~~~~~~~Hand~~~~~~~~~~~~~~~~~~~~~~~~~
-select -r LeftArm ;
-select -add LeftHand ;
+select -r RightArm ;
+select -add RightHand ;
 ikHandle -s 0;
-rename "ikHandle1" "ikHandle_arm_l";
+rename "ikHandle1" "ikHandle_arm_r";
 
 //hand control
-circle -c 0 0 0 -nr 0 1 0 -sw 360 -r 1 -d 3 -ut 0 -tol 0.01 -s 8 -ch 1; objectMoveCommand;
-matchTransform nurbsCircle1 LeftHand;
+CreateNURBSCircle;
+matchTransform nurbsCircle1 RightHand;
 scale -r 10 10 10 ;
-rename "nurbsCircle1" "hand_l_ctrl";
+rename "nurbsCircle1" "hand_r_ctrl";
 FreezeTransformations;
-parent ikHandle_arm_l hand_l_ctrl;
+parent ikHandle_arm_r hand_r_ctrl;
 
 //wrist control
-circle -c 0 0 0 -nr 0 1 0 -sw 360 -r 1 -d 3 -ut 0 -tol 0.01 -s 8 -ch 1; objectMoveCommand;
-matchTransform nurbsCircle1 LeftHand;
+CreateNURBSCircle;
+matchTransform nurbsCircle1 RightHand;
 scale -r 8 8 8 ;
-rename "nurbsCircle1" "wrist_l_ctrl";
+rename "nurbsCircle1" "wrist_r_ctrl";
 FreezeTransformations;
-parent wrist_l_ctrl hand_l_ctrl;
+parent wrist_r_ctrl hand_r_ctrl;
 
 //orient constaint
-select -r wrist_l_ctrl ;
-select -tgl LeftHand ;
+select -r wrist_r_ctrl ;
+select -tgl RightHand ;
 doCreateOrientConstraintArgList 1 { "1","0","0","0","0","0","0","1","","1" };
 orientConstraint -mo -weight 1;
 
 //fingers
-addAttr -ln "FingerCurl"  -at double  -min 0 -dv 0 |hand_l_ctrl;
-setAttr -e-keyable true |hand_l_ctrl.FingerCurl;
+addAttr -ln "FingerCurl"  -at double  -min 0 -dv 0 |hand_r_ctrl;
+setAttr -e-keyable true |hand_r_ctrl.FingerCurl;
 
-connectAttr -f hand_l_ctrl.FingerCurl  LeftHandIndex1.rotateX;
-connectAttr -f LeftHandIndex1.rotateX LeftHandIndex2.rotateX;
-connectAttr -f LeftHandIndex2.rotateX LeftHandIndex3.rotateX;
+connectAttr -f hand_r_ctrl.FingerCurl  RightHandIndex1.rotateX;
+connectAttr -f RightHandIndex1.rotateX RightHandIndex2.rotateX;
+connectAttr -f RightHandIndex2.rotateX RightHandIndex3.rotateX;
 
-connectAttr -f hand_l_ctrl.FingerCurl LeftHandMiddle1.rotateX;
-connectAttr -f LeftHandMiddle1.rotateX LeftHandMiddle2.rotateX;
-connectAttr -f LeftHandMiddle2.rotateX LeftHandMiddle3.rotateX;
+connectAttr -f hand_r_ctrl.FingerCurl RightHandMiddle1.rotateX;
+connectAttr -f RightHandMiddle1.rotateX RightHandMiddle2.rotateX;
+connectAttr -f RightHandMiddle2.rotateX RightHandMiddle3.rotateX;
 
-connectAttr -f hand_l_ctrl.FingerCurl  LeftHandRing1.rotateX;
-connectAttr -f LeftHandRing1.rotateX LeftHandRing2.rotateX;
-connectAttr -f LeftHandRing2.rotateX LeftHandRing3.rotateX;
+connectAttr -f hand_r_ctrl.FingerCurl  RightHandRing1.rotateX;
+connectAttr -f RightHandRing1.rotateX RightHandRing2.rotateX;
+connectAttr -f RightHandRing2.rotateX RightHandRing3.rotateX;
 
-connectAttr -f hand_l_ctrl.FingerCurl  LeftHandPinky1.rotateX;
-connectAttr -f LeftHandPinky1.rotateX LeftHandPinky2.rotateX;
-connectAttr -f LeftHandPinky2.rotateX LeftHandPinky3.rotateX;
+connectAttr -f hand_r_ctrl.FingerCurl  RightHandPinky1.rotateX;
+connectAttr -f RightHandPinky1.rotateX RightHandPinky2.rotateX;
+connectAttr -f RightHandPinky2.rotateX RightHandPinky3.rotateX;
 
 //thumb
-addAttr -ln "ThumbCurl"  -at double  -max 0 -dv 0 |hand_l_ctrl;
-setAttr -e-keyable true |hand_l_ctrl.ThumbCurl;
+addAttr -ln "ThumbCurl"  -at double  -max 0 -dv 0 |hand_r_ctrl;
+setAttr -e-keyable true |hand_r_ctrl.ThumbCurl;
 
-connectAttr -f hand_l_ctrl.ThumbCurl  LeftHandThumb1.rotateZ;
-connectAttr -f LeftHandThumb1.rotateZ LeftHandThumb2.rotateZ;
-connectAttr -f LeftHandThumb2.rotateZ LeftHandThumb3.rotateZ;
+connectAttr -f hand_r_ctrl.ThumbCurl  RightHandThumb1.rotateZ;
+connectAttr -f RightHandThumb1.rotateZ RightHandThumb2.rotateZ;
+connectAttr -f RightHandThumb2.rotateZ RightHandThumb3.rotateZ;
 
-addAttr -ln "ThumbSpread"  -at double   -dv 0 |hand_l_ctrl;
-setAttr -e-keyable true |hand_l_ctrl.ThumbSpread;
+addAttr -ln "ThumbSpread"  -at double   -dv 0 |hand_r_ctrl;
+setAttr -e-keyable true |hand_r_ctrl.ThumbSpread;
 
-connectAttr -f hand_l_ctrl.ThumbSpread  LeftHandThumb1.rotateX;
-connectAttr -f LeftHandThumb1.rotateX LeftHandThumb2.rotateX;
-connectAttr -f LeftHandThumb2.rotateX LeftHandThumb3.rotateX;
+connectAttr -f hand_r_ctrl.ThumbSpread  RightHandThumb1.rotateX;
+connectAttr -f RightHandThumb1.rotateX RightHandThumb2.rotateX;
+connectAttr -f RightHandThumb2.rotateX RightHandThumb3.rotateX;
 
-addAttr -ln "ThumbTwist"  -at double   -dv 0 |hand_l_ctrl;
-setAttr -e-keyable true |hand_l_ctrl.ThumbTwist;
+addAttr -ln "ThumbTwist"  -at double   -dv 0 |hand_r_ctrl;
+setAttr -e-keyable true |hand_r_ctrl.ThumbTwist;
 
-connectAttr -f hand_l_ctrl.ThumbTwist  LeftHandThumb1.rotateY;
-connectAttr -f LeftHandThumb1.rotateY LeftHandThumb2.rotateY;
-connectAttr -f LeftHandThumb2.rotateY LeftHandThumb3.rotateY;
+connectAttr -f hand_r_ctrl.ThumbTwist  RightHandThumb1.rotateY;
+connectAttr -f RightHandThumb1.rotateY RightHandThumb2.rotateY;
+connectAttr -f RightHandThumb2.rotateY RightHandThumb3.rotateY;
+
+addAttr -ln "ThumbEndCurl"  -at double   -dv 0 |hand_r_ctrl;
+setAttr -e-keyable true |hand_r_ctrl.ThumbEndCurl;
+
+connectAttr -f hand_r_ctrl.ThumbEndCurl  RightHandThumb3.rotateZ;
+
+//clavicle
+CreateNURBSCircle;
+matchTransform nurbsCircle1 RightShoulder;
+scale -r 5 5 5 ;
+move -r -10 10 0 ;
+rename "nurbsCircle1" "clavicle_r_ctrl";
+FreezeTransformations;
+parent clavicle_r_ctrl hips_ctrl;
+
+//constraint
+select -r clavicle_r_ctrl ;
+select -tgl RightShoulder ;
+doCreateOrientConstraintArgList 1 { "1","0","0","0","0","0","0","1","","1" };
+orientConstraint -mo -weight 1;
 
 
-
-
+//set up hierarchy
+parent knee_l_ctrl foot_l_ctrl;
+parent knee_r_ctrl foot_r_ctrl;
+parent spine_ctrl hips_ctrl;
+parent clavicle_l_ctrl spine_ctrl;
+parent clavicle_r_ctrl spine_ctrl;
+parent hand_l_ctrl clavicle_l_ctrl;
+parent hand_r_ctrl clavicle_r_ctrl;
+parent head_ctrl spine_ctrl;
 
